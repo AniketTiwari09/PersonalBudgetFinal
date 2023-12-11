@@ -1,9 +1,17 @@
 const express = require('express');
 const mysql = require('mysql');
-const cors = require('cors'); // Added import for CORS middleware
+const cors = require('cors'); 
+const jwt = require('jsonwebtoken');
 
 const app = express();
 const port = process.env.PORT || 3000;
+
+const secretKey = 'your_simple_secret_key';
+
+
+const generateToken = (user) => {
+  return jwt.sign({ username: user.username }, secretKey, { expiresIn: '1m' });
+};
 // require('dotenv').config();
 
 // const secretKey = process.env.JWT_SECRET;
@@ -71,6 +79,27 @@ app.post('/login', (req, res) => {
       }
     }
   });
+});
+
+
+app.get('/refreshToken', (req, res) => {
+  const token = req.headers.authorization.split(' ')[1]; // Extract token from header
+
+  try {
+    const decoded = jwt.verify(token, secretKey);
+
+    // Assuming the token expires in 1 minute (60 seconds)
+    const currentTime = Math.floor(Date.now() / 1000);
+    if (decoded.exp - currentTime < 20) {
+      // Token is close to expiration, issue a new one
+      const newToken = jwt.sign({ username: decoded.username }, secretKey, { expiresIn: '1m' });
+      res.json({ newToken });
+    } else {
+      res.status(200).json({ message: 'Token is still valid' });
+    }
+  } catch (err) {
+    res.status(401).json({ message: 'Invalid token' });
+  }
 });
 
 // Logout route (optional)
